@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>이모지 로그라이크 던전 크롤러</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #020617;
+      color: #e5e7eb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      display: flex;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    #game-container {
+      display: flex;
+      border: 1px solid #1f2937;
+      background: #030712;
+      border-radius: 8px;
+      padding: 8px;
+      gap: 8px;
+      max-width: 1280px;
+      width: 100%;
+      min-height: 560px;
+    }
+
+    #left {
+      flex: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 600px;
+    }
+
+    #screen {
+      border: 1px solid #111827;
+      background: #020617;
+      border-radius: 6px;
+      padding: 6px;
+      min-height: 320px;
+      max-height: 360px;
+      font-size: 14px;
+      line-height: 1.05;
+      overflow: hidden;
+      white-space: pre;
+    }
+
+    .tile {
+      display: inline-block;
+      width: 1.2em;
+      text-align: center;
+    }
+
+    /* 마을 이미지 영역 */
+    #screen .town-wrapper {
+      width: 90%;
+      height: 190px;
+      margin: 0 auto 6px auto;
+      overflow: hidden;
+      border-radius: 4px;
+      border: 1px solid #111827;
+    }
+    #screen img.town-img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;      /* 위/아래 흰 테두리 제거용 */
+      object-position: center;
+    }
+    #screen .town-buttons {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    #screen .town-buttons button {
+      margin: 0 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid #1f2937;
+      background: #111827;
+      color: #e5e7eb;
+      cursor: pointer;
+    }
+    #screen .town-buttons button:hover {
+      background: #1f2937;
+    }
+
+    #log {
+      border: 1px solid #111827;
+      background: #020617;
+      border-radius: 6px;
+      padding: 6px;
+      min-height: 120px;
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
+    #side {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    #mode {
+      font-weight: bold;
+      padding: 4px 6px;
+      background: #111827;
+      border-radius: 4px;
+    }
+
+    #party, #equipment, #inventory, #shop, #quests, #help, #relics {
+      border: 1px solid #111827;
+      background: #020617;
+      border-radius: 4px;
+      padding: 4px 6px;
+    }
+    #party, #equipment { max-height: 110px; overflow-y: auto; }
+    #inventory { max-height: 160px; overflow-y: auto; }
+    #shop { max-height: 140px; overflow-y: auto; }
+    #quests { max-height: 120px; overflow-y: auto; }
+    #relics { max-height: 80px; overflow-y: auto; }
+
+    .party-member {
+      padding: 2px 4px;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-bottom: 2px;
+    }
+    .party-member.selected {
+      background: #0f172a;
+      border: 1px solid #22c55e;
+    }
+
+    .slot-line {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      cursor: pointer;
+    }
+    .slot-name { color: #9ca3af; }
+
+    .item-row {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 2px;
+    }
+    .item-btn {
+      flex: 1 1 auto;
+      text-align: left;
+      padding: 2px 4px;
+      border-radius: 3px;
+      border: 1px solid #111827;
+      background: #020617;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .item-btn:hover { background: #0f172a; }
+
+    .sell-btn {
+      flex: 0 0 auto;
+      padding: 2px 4px;
+      border-radius: 3px;
+      border: 1px solid #1f2937;
+      background: #111827;
+      color: #e5e7eb;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .sell-btn:hover { background: #1f2937; }
+
+    .shop-btn, .quest-btn {
+      margin-top: 4px;
+      padding: 2px 4px;
+      font-size: 12px;
+      border-radius: 3px;
+      border: 1px solid #1f2937;
+      background: #111827;
+      color: #e5e7eb;
+      cursor: pointer;
+    }
+    .shop-btn:hover, .quest-btn:hover { background: #1f2937; }
+
+    .rarity-normal  { color: #d4d4d4; }
+    .rarity-magic   { color: #60a5fa; }
+    .rarity-rare    { color: #facc15; }
+    .rarity-unique  { color: #fb923c; }
+    .rarity-legend  { color: #a855f7; }
+    .rarity-epic    { color: #f97373; }
+
+    .item-consumable { color: #4ade80; } /* 소모품: 녹색 */
+
+    .quest-card {
+      border-bottom: 1px solid #111827;
+      padding: 2px 0;
+      margin-bottom: 2px;
+    }
+    .quest-title { font-weight: bold; }
+    .quest-meta  { font-size: 11px; color: #9ca3af; }
+
+    #help { font-size: 11px; color: #9ca3af; white-space: pre-wrap; }
+    #help details summary {
+      cursor: pointer;
+      list-style: none;
+      outline: none;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 4px; }
+      #game-container {
+        flex-direction: column;
+        min-height: unset;
+      }
+      #left { min-width: 0; }
+      #screen { font-size: 12px; min-height: 260px; max-height: 260px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="left">
+      <pre id="screen"></pre>
+      <div id="log"></div>
+    </div>
+    <div id="side">
+      <div id="mode"></div>
+      <div id="party"></div>
+      <div id="equipment"></div>
+      <div id="inventory"></div>
+      <div id="relics"></div>
+      <div id="shop"></div>
+      <div id="quests"></div>
+      <div id="help"></div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 설정값 =====
+    const MAP_W = 50;
+    const MAP_H = 25;
+    const MAX_ROOMS = 9;
+
+    // 화면에 보이는 던전 영역: 40 x 21
+    const VIEW_W = 40;
+    const VIEW_H = 21;
+    const BASE_FOV_RADIUS = 7;
+
+    // 타일 상수
+    const TILE_WALL   = '#';
+    const TILE_FLOOR  = '.';
+    const TILE_STAIRS = '>';
+    const TILE_CHEST  = 'C';
+    const TILE_TRAP   = '^';
+    const TILE_ALTAR  = 'A';
+    const TILE_CAMP   = 'F';
+    const TILE_MERCH  = 'T';
+
+    let mode = 'town';   // 'town' | 'dungeon'
+    let floor = 1;
+    let gold = 100;
+    let gameCleared = false;
+
+    let party = [];
+    let partyPositions = [];
+    let selectedHeroIndex = 0;
+
+    let inventory = [];
+    let shopItems = [];
+
+    // 던전 상태
+    let dungeonMap = [];
+    let playerX = 0, playerY = 0;
+    let monsters = [];
+    let chests = [];
+    let traps = [];
+    let altars = [];
+    let campfires = [];
+    let merchants = [];
+    let visible = [];
+    let explored = [];
+    let bossAlive = false;
+    let exitOpen = false;
+
+    let turnCount = 0;
+
+    // 의뢰
+    let quests = [];
+    let nextQuestId = 1;
+
+    // 유물
+    let relics = [];
+
+    // 몬스터 타입
+    const MONSTER_TYPES = [
+      { id: 'slime',    name: '슬라임',   emoji: '🧫',   hpMul: 1.0, atkMul: 0.8, defMul: 0.7 },
+      { id: 'goblin',   name: '고블린',   emoji: '👺',   hpMul: 1.0, atkMul: 1.0, defMul: 1.0 },
+      { id: 'spider',   name: '거미',     emoji: '🕷️',  hpMul: 0.9, atkMul: 1.1, defMul: 0.9 },
+      { id: 'bat',      name: '박쥐',     emoji: '🦇',   hpMul: 0.7, atkMul: 0.9, defMul: 0.8 },
+      { id: 'skeleton', name: '스켈레톤', emoji: '💀',   hpMul: 1.1, atkMul: 1.0, defMul: 1.1 },
+      { id: 'orc',      name: '오크',     emoji: '👹',   hpMul: 1.3, atkMul: 1.2, defMul: 1.1 },
+      { id: 'zombie',   name: '좀비',     emoji: '🧟‍♂️', hpMul: 1.2, atkMul: 0.9, defMul: 1.0 }
+    ];
+    const BOSS_TYPES = [
+      { id: 'ogre',  name: '오우거', emoji: '🧌', hpMul: 1.4, atkMul: 1.3, defMul: 1.2 },
+      { id: 'demon', name: '악마',   emoji: '😈', hpMul: 1.2, atkMul: 1.5, defMul: 1.1 }
+    ];
+    const DEMON_LORD = { id: 'demonlord', name: '마왕', emoji: '👿', hpMul: 2.2, atkMul: 1.8, defMul: 1.7 };
+
+    // 유물
+    const RELIC_POOL = [
+      { id: 'lucky',   name: '행운의 동전',      desc: '희귀 장비 드랍 확률이 소폭 증가합니다.' },
+      { id: 'lantern', name: '정찰 등불',        desc: '시야 범위가 +1 증가합니다.' },
+      { id: 'blood',   name: '피의 부적',        desc: '몬스터 처치 시 파티가 조금 회복합니다.' },
+      { id: 'focus',   name: '마력 증폭 구슬',   desc: '스크롤 계열 마법의 효율이 증가합니다.' }
+    ];
+
+    // 아이콘
+    function heroEmoji(hero) {
+      switch (hero.cls) {
+        case 'warrior':  return '👨';   // 용사
+        case 'knight':   return '🤴';
+        case 'archer':   return '🏹';
+        case 'monk':     return '🧘';
+        case 'mage':     return '🧙‍♂️';
+        case 'rogue':    return '🕵️‍♂️';
+        case 'guardian': return '🛡️';
+        default:         return '🙂';
+      }
+    }
+
+    // 유틸
+    function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    function clamp(v, min, max) { return v < min ? min : v > max ? max : v; }
+    function hasRelic(id) { return relics.some(r => r.id === id); }
+
+    // ===== 영웅 / 파티 =====
+    function classLabel(cls) {
+      switch (cls) {
+        case 'warrior':  return '전사';
+        case 'knight':   return '기사';
+        case 'archer':   return '궁수';
+        case 'monk':     return '수도사';
+        case 'mage':     return '마법사';
+        case 'rogue':    return '도적';
+        case 'guardian': return '수호자';
+        default:         return '모험가';
+      }
+    }
+
+    function createHero(name, cls) {
+      const hero = {
+        name,
+        cls,
+        baseMaxHp: randInt(28, 36),
+        baseAtk: randInt(5, 8),
+        baseDef: randInt(2, 5),
+        hp: 0,
+        equipment: {
+          head: null, chest: null, arms: null, legs: null, boots: null,
+          ring1: null, ring2: null, necklace: null, mainHand: null, offHand: null
+        },
+        tempAtk: 0,
+        tempDef: 0,
+        buffTurns: 0,
+        status: { poison: 0 }
+      };
+      hero.hp = hero.baseMaxHp;
+      return hero;
+    }
+
+    function calcHeroStats(hero) {
+      let atk = hero.baseAtk;
+      let def = hero.baseDef;
+      let maxHp = hero.baseMaxHp;
+      const eq = hero.equipment;
+
+      for (const k in eq) {
+        const item = eq[k];
+        if (!item) continue;
+        atk += item.attack || 0;
+        def += item.defense || 0;
+        maxHp += item.hp || 0;
+      }
+
+      // 직업 보정
+      switch (hero.cls) {
+        case 'warrior':  atk += 1; def += 1; break;
+        case 'knight':   atk += 1; def += 2; maxHp += 4; break;
+        case 'archer':   atk += 2; break;
+        case 'monk':     maxHp += 6; break;
+        case 'mage':     atk += 3; def -= 1; break;
+        case 'rogue':    atk += 1; break;
+        case 'guardian': def += 3; maxHp += 8; break;
+      }
+
+      atk += hero.tempAtk;
+      def += hero.tempDef;
+      if (def < 0) def = 0;
+      return { atk, def, maxHp };
+    }
+
+    function anyHeroAlive() {
+      return party.some(h => h.hp > 0);
+    }
+    function hasRogueAlive() {
+      return party.some(h => h.hp > 0 && h.cls === 'rogue');
+    }
+
+    // ===== 아이템/장비 =====
+    let nextItemId = 1;
+    const rarityOrder = ['normal', 'magic', 'rare', 'unique', 'legend', 'epic'];
+    function rarityIndex(r) { return rarityOrder.indexOf(r); }
+
+    function rarityLabel(r) {
+      switch (r) {
+        case 'normal': return '일반';
+        case 'magic':  return '매직';
+        case 'rare':   return '레어';
+        case 'unique': return '유니크';
+        case 'legend': return '레전드';
+        case 'epic':   return '에픽';
+      }
+      return r;
+    }
+    function rarityClass(r) { return 'rarity-' + r; }
+
+    function slotShortIcon(slotType) {
+      switch (slotType) {
+        case 'head':     return '🪖';
+        case 'chest':    return '🛡️';
+        case 'arms':     return '🧤';
+        case 'legs':     return '👖';
+        case 'boots':    return '🥾';
+        case 'ring':     return '💍';
+        case 'necklace': return '📿';
+        case 'mainHand': return '⚔️';
+        case 'offHand':  return '🛡️';
+        case 'potion':   return '🧪';
+        case 'scroll':   return '📜';
+        default:         return ' ';
+      }
+    }
+
+    function slotLabel(slotType) {
+      switch (slotType) {
+        case 'head':     return '🪖 머리';
+        case 'chest':    return '🛡️ 몸통';
+        case 'arms':     return '🧤 팔';
+        case 'legs':     return '👖 다리';
+        case 'boots':    return '🥾 신발';
+        case 'ring':     return '💍 반지';
+        case 'necklace': return '📿 목걸이';
+        case 'mainHand': return '⚔️ 무기';
+        case 'offHand':  return '🛡️ 보조손';
+        default:         return slotType;
+      }
+    }
+
+    function rollRarity(isBoss) {
+      let r = Math.random();
+      if (hasRelic('lucky')) r = Math.max(0, r - 0.08);
+
+      if (!isBoss) {
+        if (r < 0.60) return 'normal';
+        if (r < 0.85) return 'magic';
+        if (r < 0.97) return 'rare';
+        return 'unique';
+      } else {
+        if (r < 0.20) return 'normal';
+        if (r < 0.50) return 'magic';
+        if (r < 0.75) return 'rare';
+        if (r < 0.90) return 'unique';
+        if (r < 0.97) return 'legend';
+        return 'epic';
+      }
+    }
+
+    function createBaseItemForSlot(slot) {
+      switch (slot) {
+        case 'head':     return { name: '가죽 투구',   attack: 0, defense: 2, hp: 5 };
+        case 'chest':    return { name: '가죽 갑옷',   attack: 0, defense: 4, hp:10 };
+        case 'arms':     return { name: '가죽 장갑',   attack: 1, defense: 1, hp: 3 };
+        case 'legs':     return { name: '가죽 바지',   attack: 0, defense: 3, hp: 6 };
+        case 'boots':    return { name: '가죽 부츠',   attack: 0, defense: 2, hp: 4 };
+        case 'ring':     return { name: '구리 반지',   attack: 1, defense: 0, hp: 2 };
+        case 'necklace': return { name: '낡은 목걸이', attack: 0, defense: 0, hp: 8 };
+        case 'mainHand': return { name: '쇠검',       attack: 6, defense: 0, hp: 0 };
+        case 'offHand':  return { name: '나무 방패',   attack: 0, defense: 3, hp: 0 };
+      }
+      return { name: '이상한 물건', attack: 1, defense: 1, hp: 1 };
+    }
+
+    function makeItemName(baseName, rarity) {
+      const prefix = {
+        magic:  ['빛나는', '날카로운', '튼튼한', '신비한'],
+        rare:   ['정예의', '고급', '강화된', '숙련자의'],
+        unique: ['기묘한', '고대의', '저주받은', '특이한'],
+        legend: ['전설의', '영웅의', '왕가의', '신성한'],
+        epic:   ['에픽', '차원의', '운명의', '궁극의']
+      };
+      if (rarity === 'normal') return baseName;
+      const list = prefix[rarity] || [];
+      if (!list.length) return baseName;
+      const p = list[randInt(0, list.length - 1)];
+      return p + ' ' + baseName;
+    }
+
+    function createPotion() {
+      return {
+        id: nextItemId++,
+        category: 'potion',
+        type: 'heal',
+        name: '치유 물약',
+        slotType: 'potion',
+        description: '선택된 아군의 HP를 크게 회복합니다.',
+        price: 25
+      };
+    }
+
+    function createScroll() {
+      const kind = Math.random() < 0.5 ? 'fireball' : 'shock';
+      if (kind === 'fireball') {
+        return {
+          id: nextItemId++,
+          category: 'scroll',
+          type: 'fireball',
+          name: '화염구 스크롤',
+          slotType: 'scroll',
+          description: '주변 적들에게 화염 피해를 줍니다.',
+          price: 40
+        };
+      } else {
+        return {
+          id: nextItemId++,
+          category: 'scroll',
+          type: 'shock',
+          name: '기절 스크롤',
+          slotType: 'scroll',
+          description: '몬스터를 잠시 멍하게 만들어 공격을 약화합니다.',
+          price: 35
+        };
+      }
+    }
+
+    function generateRandomItem(isBoss = false) {
+      const roll = Math.random();
+      if (!isBoss && roll < 0.18) return createPotion();
+      if (!isBoss && roll < 0.30) return createScroll();
+
+      const slots = ['head','chest','arms','legs','boots','ring','necklace','mainHand','offHand'];
+      const slot = slots[randInt(0, slots.length - 1)];
+      const rarity = rollRarity(isBoss);
+      const base = createBaseItemForSlot(slot);
+
+      let atk = base.attack, def = base.defense, hp = base.hp;
+      let mul = 1;
+      switch (rarity) {
+        case 'normal': mul = 1.0; break;
+        case 'magic':  mul = 1.2; break;
+        case 'rare':   mul = 1.5; break;
+        case 'unique': mul = 1.8; break;
+        case 'legend': mul = 2.2; break;
+        case 'epic':   mul = 2.7; break;
+      }
+      atk = Math.round(atk * mul) + randInt(0,2);
+      def = Math.round(def * mul) + randInt(0,2);
+      hp  = Math.round(hp  * mul) + randInt(0,4);
+
+      return {
+        id: nextItemId++,
+        category: 'gear',
+        name: makeItemName(base.name, rarity),
+        slotType: slot,
+        rarity,
+        attack: atk,
+        defense: def,
+        hp,
+        price: (atk + def + Math.floor(hp/2)) * 3 + randInt(5,20)
+      };
+    }
+
+    function itemSummary(item) {
+      if (item.category === 'gear') {
+        const parts = [];
+        if (item.attack) parts.push(`ATK+${item.attack}`);
+        if (item.defense) parts.push(`DEF+${item.defense}`);
+        if (item.hp)      parts.push(`HP+${item.hp}`);
+        return parts.join(', ');
+      } else if (item.category === 'potion') {
+        return 'HP 회복';
+      } else if (item.category === 'scroll') {
+        return item.type === 'fireball' ? '주변 적 화염 피해' : '적 공격 약화';
+      }
+      return '';
+    }
+
+    function equipOrUseItem(index) {
+      const item = inventory[index];
+      if (!item) return;
+
+      if (item.category === 'potion') { usePotion(index); return; }
+      if (item.category === 'scroll') { useScroll(index); return; }
+      equipItem(index);
+    }
+
+    function equipItem(idx) {
+      if (!party.length) return;
+      const hero = party[selectedHeroIndex];
+      const item = inventory[idx];
+      if (!item || item.category !== 'gear') return;
+
+      let slotKey = null;
+      if (item.slotType === 'ring') {
+        if (!hero.equipment.ring1) slotKey = 'ring1';
+        else if (!hero.equipment.ring2) slotKey = 'ring2';
+        else slotKey = 'ring1';
+      } else slotKey = item.slotType;
+
+      const old = hero.equipment[slotKey];
+      hero.equipment[slotKey] = item;
+
+      const stats = calcHeroStats(hero);
+      if (hero.hp > stats.maxHp) hero.hp = stats.maxHp;
+
+      let msg;
+      if (old) {
+        inventory[idx] = old;
+        msg = `${hero.name}가 ${old.name}을(를) ${item.name}으로 교체했습니다.`;
+      } else {
+        inventory.splice(idx, 1);
+        msg = `${hero.name}가 ${item.name}을(를) 장비했습니다.`;
+      }
+
+      if (mode === 'dungeon') {
+        msg += ' (1턴 경과)';
+        setLog(msg);
+        monstersAct();
+      } else setLog(msg);
+
+      renderAll();
+    }
+
+    function unequipSlot(slotKey) {
+      if (!party.length) return;
+      const hero = party[selectedHeroIndex];
+      const item = hero.equipment[slotKey];
+      if (!item) {
+        setLog('해당 슬롯에 장비가 없습니다.');
+        renderAll();
+        return;
+      }
+      hero.equipment[slotKey] = null;
+      inventory.push(item);
+      const stats = calcHeroStats(hero);
+      if (hero.hp > stats.maxHp) hero.hp = stats.maxHp;
+
+      let msg = `${hero.name}가 ${item.name}을(를) 벗었습니다.`;
+      if (mode === 'dungeon') {
+        msg += ' (1턴 경과)';
+        setLog(msg);
+        monstersAct();
+      } else setLog(msg);
+
+      renderAll();
+    }
+
+    function sellItem(idx) {
+      if (mode !== 'town') {
+        setLog('던전 내부에서는 아이템을 판매할 수 없습니다.');
+        renderAll();
+        return;
+      }
+      const item = inventory[idx];
+      if (!item) return;
+      const price = Math.max(5, Math.floor((item.price || 20) * 0.6));
+      gold += price;
+      inventory.splice(idx, 1);
+      setLog(`${item.name}을(를) ${price} 골드에 판매했습니다.`);
+      renderAll();
+    }
+
+    function usePotion(idx) {
+      if (!party.length) return;
+      const item = inventory[idx];
+      const hero = party[selectedHeroIndex];
+      const stats = calcHeroStats(hero);
+      const heal = clamp(Math.floor(stats.maxHp * 0.6), 1, stats.maxHp - hero.hp);
+      if (heal <= 0) {
+        setLog(`${hero.name}은(는) 이미 체력이 가득합니다.`);
+        renderAll();
+        return;
+      }
+      hero.hp += heal;
+      hero.status.poison = 0;
+      inventory.splice(idx, 1);
+      let msg = `${hero.name}이(가) ${item.name}을(를) 마셨다. HP ${heal} 회복 (중독 해제).`;
+      if (mode === 'dungeon') {
+        msg += ' (1턴 경과)';
+        setLog(msg);
+        monstersAct();
+      } else setLog(msg);
+      renderAll();
+    }
+
+    function useScroll(idx) {
+      const item = inventory[idx];
+      if (!item || item.category !== 'scroll') return;
+      if (mode !== 'dungeon') {
+        setLog('스크롤은 던전에서만 사용할 수 있습니다.');
+        renderAll();
+        return;
+      }
+      inventory.splice(idx, 1);
+
+      if (item.type === 'fireball') {
+        let hit = 0;
+        for (let i = monsters.length - 1; i >= 0; i--) {
+          const m = monsters[i];
+          const dist = Math.abs(m.x - playerX) + Math.abs(m.y - playerY);
+          if (dist <= 2) {
+            let baseMin = 12 + floor;
+            let baseMax = 20 + floor * 2;
+            if (hasRelic('focus')) {
+              baseMin = Math.floor(baseMin * 1.4);
+              baseMax = Math.floor(baseMax * 1.4);
+            }
+            const dmg = randInt(baseMin, baseMax);
+            m.hp -= dmg;
+            appendLog(`화염구가 ${monsterLabel(m)}에게 ${dmg} 피해!`);
+            if (m.hp <= 0) {
+              m.hp = 0;
+              appendLog(`${monsterLabel(m)} 격파!`);
+              onMonsterKilled(i, m);
+            }
+            hit++;
+          }
+        }
+        if (!hit) setLog('화염구를 사용했지만 주변에 적이 없다.');
+        else setLog('화염구 스크롤을 사용했다!');
+      } else if (item.type === 'shock') {
+        for (const m of monsters) {
+          m.shockTurns = (m.shockTurns || 0) + 3;
+        }
+        setLog('모든 몬스터가 잠시 멍해졌다! (몇 턴 동안 공격 약화)');
+      }
+      monstersAct();
+      renderAll();
+    }
+
+    // ===== 로그 =====
+    const logEl = document.getElementById('log');
+    function setLog(msg) {
+      logEl.textContent = msg;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    function appendLog(msg) {
+      logEl.textContent += '\n' + msg;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // ===== 던전 생성 =====
+    function createEmptyMap() {
+      dungeonMap = [];
+      visible = [];
+      explored = [];
+      for (let y=0; y<MAP_H; y++) {
+        const row = [], vRow = [], eRow = [];
+        for (let x=0; x<MAP_W; x++) {
+          row.push(TILE_WALL);
+          vRow.push(false);
+          eRow.push(false);
+        }
+        dungeonMap.push(row);
+        visible.push(vRow);
+        explored.push(eRow);
+      }
+    }
+
+    function rectsOverlap(a,b) {
+      return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    }
+
+    function carveRoom(room) {
+      for (let y=room.y; y<room.y+room.h; y++) {
+        for (let x=room.x; x<room.x+room.w; x++) {
+          if (x>0 && x<MAP_W-1 && y>0 && y<MAP_H-1) {
+            dungeonMap[y][x] = TILE_FLOOR;
+          }
+        }
+      }
+    }
+
+    function carveHTunnel(x1,x2,y) {
+      for (let x=Math.min(x1,x2); x<=Math.max(x1,x2); x++) {
+        if (x>0 && x<MAP_W-1 && y>0 && y<MAP_H-1) {
+          dungeonMap[y][x] = TILE_FLOOR;
+        }
+      }
+    }
+
+    function carveVTunnel(y1,y2,x) {
+      for (let y=Math.min(y1,y2); y<=Math.max(y1,y2); y++) {
+        if (x>0 && x<MAP_W-1 && y>0 && y<MAP_H-1) {
+          dungeonMap[y][x] = TILE_FLOOR;
+        }
+      }
+    }
+
+    function generateDungeon() {
+      createEmptyMap();
+      monsters = [];
+      chests = [];
+      traps = [];
+      altars = [];
+      campfires = [];
+      merchants = [];
+      bossAlive = false;
+      exitOpen = false;
+
+      const rooms = [];
+      for (let i=0; i<MAX_ROOMS; i++) {
+        const w = randInt(6,12);
+        const h = randInt(4,8);
+        const x = randInt(1, MAP_W - w - 2);
+        const y = randInt(1, MAP_H - h - 2);
+        const room = {x,y,w,h};
+        let ok = true;
+        for (const other of rooms) {
+          if (rectsOverlap(room, other)) { ok = false; break; }
+        }
+        if (!ok) continue;
+        carveRoom(room);
+        if (rooms.length) {
+          const prev = rooms[rooms.length-1];
+          const px = prev.x + Math.floor(prev.w/2);
+          const py = prev.y + Math.floor(prev.h/2);
+          const cx = room.x + Math.floor(room.w/2);
+          const cy = room.y + Math.floor(room.h/2);
+          if (Math.random()<0.5) {
+            carveHTunnel(px,cx,py);
+            carveVTunnel(py,cy,cx);
+          } else {
+            carveVTunnel(py,cy,px);
+            carveHTunnel(px,cx,cy);
+          }
+        }
+        rooms.push(room);
+      }
+
+      // 플레이어 시작 위치
+      const first = rooms[0];
+      playerX = first.x + Math.floor(first.w/2);
+      playerY = first.y + Math.floor(first.h/2);
+      partyPositions = party.map((_,idx) => ({x: playerX - idx -1, y: playerY}));
+
+      // 계단/보스 위치
+      const last = rooms[rooms.length-1];
+      const sx = last.x + Math.floor(last.w/2);
+      const sy = last.y + Math.floor(last.h/2);
+      dungeonMap[sy][sx] = TILE_STAIRS;
+
+      // 몬스터 배치
+      const baseMon = 6 + Math.floor(floor/3);
+      const monsterCount = clamp(baseMon, 5, 20);
+      for (let i=0; i<monsterCount; i++) {
+        let placed=false; let tries=0;
+        while (!placed && tries<100) {
+          const room = rooms[randInt(0, rooms.length-1)];
+          const x = randInt(room.x, room.x+room.w-1);
+          const y = randInt(room.y, room.y+room.h-1);
+          if (dungeonMap[y][x] !== TILE_FLOOR) { tries++; continue; }
+          if (x===playerX && y===playerY) { tries++; continue; }
+          if (monsters.some(m => m.x===x && m.y===y)) { tries++; continue; }
+
+          let type;
+          if (floor === 100) type = DEMON_LORD;
+          else if (floor %5 ===0 && !bossAlive) type = BOSS_TYPES[randInt(0,BOSS_TYPES.length-1)];
+          else type = MONSTER_TYPES[randInt(0,MONSTER_TYPES.length-1)];
+
+          const levelScale = 1 + floor*0.08;
+          const hp = Math.floor(20 * type.hpMul * levelScale);
+          const atk = Math.floor(6 * type.atkMul * levelScale);
+          const def = Math.floor(3 * type.defMul * levelScale);
+
+          monsters.push({
+            x,y,
+            typeId: type.id,
+            name: type.name,
+            emoji: type.emoji,
+            hp,
+            atk,
+            def,
+            isBoss: (type === DEMON_LORD || floor%5===0 && !bossAlive)
+          });
+          if (monsters[monsters.length-1].isBoss) bossAlive = true;
+          placed=true;
+        }
+      }
+
+      // 보물상자/함정/제단/캠프/상인
+      const floorFactor = 1 + floor*0.03;
+      const chestCount = clamp(Math.floor(3 * floorFactor/2), 2, 10);
+      for (let i=0;i<chestCount;i++) placeFeatureRandom(TILE_CHEST, chests);
+      const trapCount = clamp(Math.floor(4 * floorFactor/2), 3, 12);
+      for (let i=0;i<trapCount;i++) placeFeatureRandom(TILE_TRAP, traps);
+      const altarCount = randInt(0,2);
+      for (let i=0;i<altarCount;i++) placeFeatureRandom(TILE_ALTAR, altars);
+      const campCount = randInt(0,2);
+      for (let i=0;i<campCount;i++) placeFeatureRandom(TILE_CAMP, campfires);
+      const merchCount = randInt(0,1);
+      for (let i=0;i<merchCount;i++) placeFeatureRandom(TILE_MERCH, merchants);
+
+      recomputeFov();
+    }
+
+    function placeFeatureRandom(tile, list) {
+      let placed=false; let tries=0;
+      while(!placed && tries<200) {
+        const x = randInt(1,MAP_W-2);
+        const y = randInt(1,MAP_H-2);
+        if (dungeonMap[y][x]!==TILE_FLOOR) { tries++; continue; }
+        if (x===playerX && y===playerY) { tries++; continue; }
+        if (monsters.some(m => m.x===x && m.y===y)) { tries++; continue; }
+        dungeonMap[y][x] = tile;
+        if (list) list.push({x,y, triggered:false});
+        placed=true;
+      }
+    }
+
+    // ===== FOV & 그리기 =====
+    function getFovRadius() {
+      let r = BASE_FOV_RADIUS;
+      if (hasRelic('lantern')) r++;
+      return r;
+    }
+
+    function recomputeFov() {
+      const r = getFovRadius();
+      for (let y=0;y<MAP_H;y++) for (let x=0;x<MAP_W;x++) visible[y][x]=false;
+      for (let dy=-r; dy<=r; dy++) {
+        for (let dx=-r; dx<=r; dx++) {
+          const x = playerX + dx;
+          const y = playerY + dy;
+          if (x<0||x>=MAP_W||y<0||y>=MAP_H) continue;
+          const dist = Math.abs(dx)+Math.abs(dy);
+          if (dist<=r) {
+            visible[y][x]=true;
+            explored[y][x]=true;
+          }
+        }
+      }
+    }
+
+    function monsterLabel(m) {
+      return `${m.name}`;
+    }
+
+    function drawDungeon() {
+      const screen = document.getElementById('screen');
+      let html = '';
+
+      const halfW = Math.floor(VIEW_W/2);
+      const halfH = Math.floor(VIEW_H/2);
+
+      const startX = clamp(playerX - halfW, 0, MAP_W - VIEW_W);
+      const startY = clamp(playerY - halfH, 0, MAP_H - VIEW_H);
+
+      for (let y=startY; y<startY+VIEW_H; y++) {
+        for (let x=startX; x<startX+VIEW_W; x++) {
+          let ch = ' ';
+          const tile = dungeonMap[y][x];
+          const vis = visible[y][x];
+          const exp = explored[y][x];
+
+          // 파티 위치
+          let partyIndex = partyPositions.findIndex(p => p.x===x && p.y===y);
+          if (partyIndex === 0 && vis) {
+            ch = heroEmoji(party[0]);
+          } else if (partyIndex > 0 && vis) {
+            ch = heroEmoji(party[partyIndex]);
+          } else {
+            // 몬스터
+            const m = monsters.find(m => m.x===x && m.y===y);
+            if (m && vis) ch = m.emoji;
+            else if (vis) {
+              if (tile === TILE_WALL) ch = '⬛';
+              else if (tile === TILE_FLOOR) ch = '⬜';
+              else if (tile === TILE_STAIRS) ch = '🔽';
+              else if (tile === TILE_CHEST) ch = '💰';
+              else if (tile === TILE_TRAP) {
+                const isKnown = hasRogueAlive() || traps.some(t => t.x===x && t.y===y && t.triggered);
+                ch = isKnown ? '⚠️' : '⬜';
+              }
+              else if (tile === TILE_ALTAR) ch = '⛩️';
+              else if (tile === TILE_CAMP) ch = '🔥';
+              else if (tile === TILE_MERCH) ch = '🧙‍♂️';
+              else ch = '⬜';
+            } else if (exp) {
+              // 탐색했지만 현재는 안 보이는 곳
+              if (tile === TILE_WALL) ch = '▪️';
+              else ch = '▫️';
+            } else {
+              ch = ' ';
+            }
+          }
+          html += `<span class="tile">${ch}</span>`;
+        }
+        html += '\n';
+      }
+      screen.innerHTML = html;
+    }
+
+    function drawTown() {
+      const screen = document.getElementById('screen');
+      const imgHtml = `
+<div class="town-buttons">
+  <button onclick="hireAlly()">동료 모집</button>
+  <button onclick="restInTown()">휴식 (전원 회복)</button>
+  <button onclick="enterDungeon()">던전 입장</button>
+</div>
+<div class="town-wrapper">
+  <!-- 여기에 본인이 가진 마을 이미지를 town.png로 두면 됨 -->
+  <img class="town-img" src="town.png" alt="마을 풍경" />
+</div>
+마을 광장입니다. 여관에서 동료를 모집하고, 상점에서 장비와 소모품을 구입한 뒤
+깊은 던전에 도전해 보세요.\n\n골드: ${gold}  |  현재 층 기록: ${floor}층까지 탐험`;
+      screen.textContent = '';
+      screen.innerHTML = imgHtml;
+    }
+
+    // ===== 전투 및 이동 =====
+    function movePlayer(dx,dy) {
+      if (mode!=='dungeon') return;
+      const nx = playerX + dx;
+      const ny = playerY + dy;
+      if (nx<0||nx>=MAP_W||ny<0||ny>=MAP_H) return;
+
+      const tile = dungeonMap[ny][nx];
+
+      // 벽
+      if (tile === TILE_WALL) {
+        setLog('단단한 벽이다.');
+        renderAll();
+        return;
+      }
+
+      // 몬스터
+      const mIndex = monsters.findIndex(m => m.x===nx && m.y===ny);
+      if (mIndex >= 0) {
+        battle(monsters[mIndex], mIndex);
+        return;
+      }
+
+      // 이동
+      playerX = nx; playerY = ny;
+      // 파티 꼬리 이동
+      for (let i=partyPositions.length-1; i>0; i--) {
+        partyPositions[i].x = partyPositions[i-1].x;
+        partyPositions[i].y = partyPositions[i-1].y;
+      }
+      partyPositions[0].x = playerX;
+      partyPositions[0].y = playerY;
+
+      handleTileEvent(tile, nx, ny);
+
+      turnCount++;
+      recomputeFov();
+      monstersAct();
+      renderAll();
+    }
+
+    function handleTileEvent(tile,x,y) {
+      if (tile === TILE_STAIRS && exitOpen) {
+        if (floor >= 100) {
+          // 이미 마왕을 잡은 뒤라면 그냥 탈출
+          setLog('계단을 통해 마을로 귀환했습니다.');
+          returnToTown(true);
+          return;
+        }
+        const goDown = confirm('보스를 쓰러뜨리고 계단이 열렸다.\n\n[확인] 더 깊은 층으로 내려간다.\n[취소] 여기서 탈출해 마을로 돌아간다.');
+        if (goDown) {
+          floor++;
+          setLog(`${floor}층으로 내려갑니다...`);
+          generateDungeon();
+        } else {
+          returnToTown(true);
+        }
+        renderAll();
+        return;
+      }
+
+      if (tile === TILE_CHEST) {
+        dungeonMap[y][x] = TILE_FLOOR;
+        const goldGain = randInt(20,60);
+        gold += goldGain;
+        appendLog(`보물상자를 열었다! 골드 ${goldGain} 획득.`);
+        const itemChance = Math.random();
+        if (itemChance < 0.9) {
+          const item = generateRandomItem(false);
+          inventory.push(item);
+          appendLog(`[상자] ${item.name} 획득.`);
+        }
+      } else if (tile === TILE_TRAP) {
+        let trapObj = traps.find(t => t.x===x && t.y===y);
+        if (trapObj && !trapObj.triggered) {
+          trapObj.triggered = true;
+          const victims = party.filter(h => h.hp>0);
+          if (victims.length) {
+            const target = victims[randInt(0, victims.length-1)];
+            const dmg = randInt(4,10) + Math.floor(floor/3);
+            target.hp -= dmg;
+            appendLog(`함정을 밟았다! ${target.name}이(가) ${dmg} 피해를 입었다.`);
+            if (target.hp <=0) {
+              target.hp = 0;
+              appendLog(`${target.name}이(가) 쓰러졌다...`);
+              if (!anyHeroAlive()) {
+                handlePartyWipe();
+                return;
+              }
+            }
+          }
+        }
+      } else if (tile === TILE_ALTAR) {
+        altarEvent(x,y);
+      } else if (tile === TILE_CAMP) {
+        campEvent(x,y);
+      } else if (tile === TILE_MERCH) {
+        merchantEvent(x,y);
+      }
+    }
+
+    function altarEvent(x,y) {
+      dungeonMap[y][x] = TILE_FLOOR;
+      const roll = Math.random();
+      if (roll < 0.4) {
+        // 회복
+        for (const h of party) {
+          if (h.hp<=0) continue;
+          const stats = calcHeroStats(h);
+          h.hp = stats.maxHp;
+        }
+        appendLog('축복의 제단이다! 파티 전원이 완전히 회복됐다.');
+      } else if (roll < 0.8) {
+        // 버프
+        for (const h of party) {
+          if (h.hp<=0) continue;
+          h.tempAtk += 2;
+          h.tempDef += 2;
+          h.buffTurns = Math.max(h.buffTurns, 20);
+        }
+        appendLog('제단에서 힘이 솟아나온다! 20턴 동안 ATK/DEF +2.');
+      } else {
+        // 저주
+        for (const h of party) {
+          if (h.hp<=0) continue;
+          h.status.poison += 10;
+        }
+        appendLog('제단이 갑자기 어두워지더니, 파티가 저주를 받았다... (10턴 동안 이동 시 중독 피해)');
+      }
+    }
+
+    function campEvent(x,y) {
+      dungeonMap[y][x] = TILE_FLOOR;
+      const heal = Math.random() < 0.5;
+      if (heal) {
+        for (const h of party) {
+          if (h.hp<=0) continue;
+          const stats = calcHeroStats(h);
+          const gain = Math.floor(stats.maxHp * 0.4);
+          h.hp = Math.min(stats.maxHp, h.hp + gain);
+        }
+        appendLog('모닥불 곁에서 잠시 쉰다. 파티의 체력이 약간 회복됐다.');
+      } else {
+        appendLog('식량이 나빠졌다... 아무 일도 일어나지 않았다.');
+      }
+    }
+
+    function merchantEvent(x,y) {
+      dungeonMap[y][x] = TILE_FLOOR;
+      const item = generateRandomItem(true);
+      inventory.push(item);
+      appendLog(`수상한 떠돌이 상인이 장비 하나를 건넨 뒤 사라졌다.\n[획득] ${item.name}`);
+    }
+
+    function battle(monster, index) {
+      if (!anyHeroAlive()) return;
+      // 파티 공격
+      let totalDamage = 0;
+      for (const h of party) {
+        if (h.hp<=0) continue;
+        const stats = calcHeroStats(h);
+        let atk = stats.atk + randInt(-1,2);
+        if (atk<1) atk=1;
+        if (h.cls==='archer' && Math.abs(monster.x-playerX)+Math.abs(monster.y-playerY)>1) {
+          atk += 2; // 궁수 원거리 보너스
+        }
+        if (h.cls==='rogue' && Math.random()<0.15) {
+          atk *= 2; // 도적 치명타
+          appendLog(`${h.name}의 기습 공격! (치명타)`);
+        }
+        const dmg = Math.max(1, atk - monster.def);
+        monster.hp -= dmg;
+        totalDamage += dmg;
+      }
+      setLog(`파티가 ${monsterLabel(monster)}에게 총 ${totalDamage} 피해를 입혔다.`);
+      if (monster.hp <= 0) {
+        monster.hp = 0;
+        appendLog(`${monsterLabel(monster)}를 쓰러뜨렸다!`);
+        onMonsterKilled(index, monster);
+        recomputeFov();
+        renderAll();
+        return;
+      }
+
+      // 몬스터 반격
+      const targets = party.filter(h => h.hp>0);
+      if (!targets.length) return;
+      let target = targets[randInt(0, targets.length-1)];
+
+      let atk = monster.atk + randInt(-1,2);
+      if (monster.shockTurns && monster.shockTurns>0) atk = Math.floor(atk*0.5);
+      const stats = calcHeroStats(target);
+      let dmg = Math.max(1, atk - stats.def);
+      target.hp -= dmg;
+      appendLog(`${monsterLabel(monster)}의 반격! ${target.name}이(가) ${dmg} 피해.`);
+
+      if (target.hp<=0) {
+        target.hp=0;
+        appendLog(`${target.name}이(가) 쓰러졌다...`);
+        if (!anyHeroAlive()) {
+          handlePartyWipe();
+          return;
+        }
+      }
+
+      // 턴 경과
+      monstersAct();
+      recomputeFov();
+      renderAll();
+    }
+
+    function applyRelicOnKill() {
+      if (!hasRelic('blood')) return;
+      for (const h of party) {
+        if (h.hp<=0) continue;
+        h.hp += 2;
+        const stats = calcHeroStats(h);
+        if (h.hp>stats.maxHp) h.hp = stats.maxHp;
+      }
+      appendLog('[유물] 피의 부적 효과로 파티가 소량 회복했다.');
+    }
+
+    function grantRandomRelic(reason) {
+      const available = RELIC_POOL.filter(r => !hasRelic(r.id));
+      if (!available.length) return;
+      const relic = available[randInt(0, available.length-1)];
+      relics.push(relic);
+      appendLog(`[유물 획득] ${relic.name} - ${relic.desc}`);
+    }
+
+    function onMonsterKilled(index, monster) {
+      // 골드 & 드랍
+      const goldGain = randInt(5, 20) + Math.floor(floor/2);
+      gold += goldGain;
+      appendLog(`${monsterLabel(monster)}에게서 ${goldGain} 골드를 얻었다.`);
+      if (Math.random()<0.3 || monster.isBoss) {
+        const item = generateRandomItem(monster.isBoss);
+        inventory.push(item);
+        appendLog(`[드랍] ${item.name} 획득.`);
+      }
+      applyRelicOnKill();
+
+      // 보스 처리
+      if (monster.isBoss) {
+        bossAlive = false;
+        if (floor === 100) {
+          handleFinalBossDefeat();
+        } else {
+          exitOpen = true;
+          appendLog('보스를 처치했다! 계단에서 탈출하거나 더 내려갈 수 있다.');
+          grantRandomRelic('boss');
+        }
+      }
+
+      monsters.splice(index,1);
+    }
+
+    function handleFinalBossDefeat() {
+      setLog('최종 보스 마왕을 쓰러뜨렸다! 100층 정복 완료!');
+      gameCleared = true;
+      grantRandomRelic('final');
+      returnToTown(true);
+    }
+
+    function handlePartyWipe() {
+      setLog('파티가 전멸했다... 간신히 목숨만 건져 마을로 도망쳤다.');
+      // 일부 아이템 손실
+      if (inventory.length>0) {
+        const toLose = Math.floor(inventory.length/2);
+        for (let i=0;i<toLose;i++) {
+          const idx = randInt(0, inventory.length-1);
+          inventory.splice(idx,1);
+        }
+        appendLog(`충격으로 장비 일부를 잃어버렸다... (인벤토리 약 절반 손실)`);
+      }
+      // 골드 일부 손실
+      if (gold>0) {
+        const lost = Math.floor(gold*0.3);
+        gold -= lost;
+        appendLog(`소지금도 흩어졌다... 골드 ${lost} 손실.`);
+      }
+
+      // 전원 1 HP로 부활
+      for (const h of party) {
+        const stats = calcHeroStats(h);
+        h.hp = Math.max(1, Math.floor(stats.maxHp*0.3));
+        h.status.poison = 0;
+        h.buffTurns = 0;
+        h.tempAtk = 0;
+        h.tempDef = 0;
+      }
+      returnToTown(false);
+    }
+
+    function monstersAct() {
+      // 버프/중독 턴 처리
+      for (const h of party) {
+        if (h.buffTurns>0) {
+          h.buffTurns--;
+          if (h.buffTurns===0) {
+            h.tempAtk = 0;
+            h.tempDef = 0;
+            appendLog(`${h.name}의 제단 버프가 사라졌다.`);
+          }
+        }
+        if (h.status.poison>0 && h.hp>0) {
+          h.status.poison--;
+          h.hp -= 1;
+          if (h.hp<=0) {
+            h.hp=0;
+            appendLog(`${h.name}은(는) 독으로 쓰러졌다...`);
+          }
+        }
+      }
+      if (!anyHeroAlive()) {
+        handlePartyWipe();
+        return;
+      }
+
+      for (const m of monsters) {
+        if (m.hp<=0) continue;
+        if (m.shockTurns && m.shockTurns>0) m.shockTurns--;
+
+        const dx = playerX - m.x;
+        const dy = playerY - m.y;
+        const dist = Math.abs(dx)+Math.abs(dy);
+
+        if (dist === 1) {
+          // 인접 공격
+          const targets = party.filter(h => h.hp>0);
+          if (!targets.length) return;
+          let target;
+          if (dist===1 && party[0].hp>0) target = party[0];
+          else target = targets[randInt(0,targets.length-1)];
+          const stats = calcHeroStats(target);
+          let atk = m.atk + randInt(-1,2);
+          if (m.shockTurns && m.shockTurns>0) atk = Math.floor(atk*0.6);
+          const dmg = Math.max(1, atk - stats.def);
+          target.hp -= dmg;
+          appendLog(`${monsterLabel(m)}가 ${target.name}을(를) 공격! (${dmg} 피해)`);
+          if (target.hp<=0) {
+            target.hp=0;
+            appendLog(`${target.name}이(가) 쓰러졌다...`);
+            if (!anyHeroAlive()) {
+              handlePartyWipe();
+              return;
+            }
+          }
+        } else if (dist <= 6) {
+          // 추적 이동
+          const stepX = dx>0 ? 1 : (dx<0 ? -1 : 0);
+          const stepY = dy>0 ? 1 : (dy<0 ? -1 : 0);
+          const tryMoves = [];
+          if (stepX!==0) tryMoves.push({x:m.x+stepX, y:m.y});
+          if (stepY!==0) tryMoves.push({x:m.x, y:m.y+stepY});
+          for (const mv of tryMoves) {
+            if (mv.x<0||mv.x>=MAP_W||mv.y<0||mv.y>=MAP_H) continue;
+            if (dungeonMap[mv.y][mv.x]===TILE_WALL) continue;
+            if (monsters.some(o => o!==m && o.x===mv.x && o.y===mv.y)) continue;
+            m.x = mv.x; m.y = mv.y;
+            break;
+          }
+        } else {
+          // 랜덤 이동
+          if (Math.random()<0.4) {
+            const dir = [[1,0],[-1,0],[0,1],[0,-1]][randInt(0,3)];
+            const tx = m.x + dir[0], ty = m.y + dir[1];
+            if (tx>0 && tx<MAP_W-1 && ty>0 && ty<MAP_H-1 && dungeonMap[ty][tx]!==TILE_WALL &&
+                !monsters.some(o => o!==m && o.x===tx && o.y===ty)) {
+              m.x = tx; m.y = ty;
+            }
+          }
+        }
+      }
+    }
+
+    // ===== 마을/상점/의뢰 =====
+    function restInTown() {
+      if (!party.length) return;
+      for (const h of party) {
+        const stats = calcHeroStats(h);
+        h.hp = stats.maxHp;
+        h.status.poison = 0;
+        h.buffTurns = 0;
+        h.tempAtk = 0;
+        h.tempDef = 0;
+      }
+      setLog('여관에서 푹 쉬었다. 파티 전원이 완전히 회복됐다.');
+      renderAll();
+    }
+
+    function hireAlly() {
+      if (party.length>=4) {
+        setLog('이미 파티가 가득 찼다. (최대 4명)');
+        renderAll();
+        return;
+      }
+      const classes = ['warrior','archer','mage','monk','rogue','guardian','knight'];
+      const cls = classes[randInt(0, classes.length-1)];
+      const namePool = {
+        warrior:['브랜','케인','도란'],
+        archer:['엘리','나인','페일'],
+        mage:['리안','미라','자레스'],
+        monk:['시안','보라','라일'],
+        rogue:['린','카일','제이드'],
+        guardian:['볼크','하르','도미르'],
+        knight:['알렉','세실','레온']
+      };
+      const nList = namePool[cls] || ['무명 용병'];
+      const hero = createHero(nList[randInt(0,nList.length-1)], cls);
+      party.push(hero);
+      partyPositions.push({x:playerX, y:playerY});
+      setLog(`새로운 동료가 합류했다! (${hero.name}, ${classLabel(cls)})`);
+      renderAll();
+    }
+
+    function refreshShop() {
+      shopItems = [];
+      for (let i=0;i<5;i++) {
+        const roll = Math.random();
+        if (roll < 0.4) shopItems.push(generateRandomItem(false));
+        else if (roll < 0.7) shopItems.push(createPotion());
+        else shopItems.push(createScroll());
+      }
+    }
+
+    function buyFromShop(idx) {
+      const item = shopItems[idx];
+      if (!item) return;
+      if (gold < item.price) {
+        setLog('골드가 부족하다.');
+        renderAll();
+        return;
+      }
+      gold -= item.price;
+      inventory.push(item);
+      shopItems.splice(idx,1);
+      setLog(`${item.name}을(를) 구매했다. (-${item.price} 골드)`);
+      renderAll();
+    }
+
+    function setupQuests() {
+      quests = [
+        { id: nextQuestId++, title: '4층 도달 후 귀환', desc: '던전 4층에 도달한 뒤 살아서 마을로 돌아오기.', type: 'reachAndReturn', targetFloor: 4, done: false, reward: 120 },
+        { id: nextQuestId++, title: '보스 1회 격파', desc: '어떤 층이든 보스를 1회 쓰러뜨리기.', type: 'killBoss', progress:0, target:1, done:false, reward:150 }
+      ];
+    }
+
+    function updateQuestsOnReturn() {
+      for (const q of quests) {
+        if (q.done) continue;
+        if (q.type === 'reachAndReturn' && floor >= q.targetFloor) {
+          q.done = true;
+          gold += q.reward;
+          appendLog(`[의뢰 완료] ${q.title} (+${q.reward} 골드)`);
+        }
+      }
+    }
+
+    function updateQuestsOnKill(monster) {
+      for (const q of quests) {
+        if (q.done) continue;
+        if (q.type === 'killBoss' && monster.isBoss) {
+          q.progress = (q.progress||0)+1;
+          if (q.progress>=q.target) {
+            q.done=true;
+            gold += q.reward;
+            appendLog(`[의뢰 완료] ${q.title} (+${q.reward} 골드)`);
+          }
+        }
+      }
+    }
+
+    function returnToTown(fromVictory) {
+      mode = 'town';
+      if (fromVictory) updateQuestsOnReturn();
+      drawTown();
+      renderAll();
+    }
+
+    function enterDungeon() {
+      if (!party.length) {
+        // 파티 없으면 기본 파티 생성
+        party = [
+          createHero('용사', 'warrior'),
+          createHero('수도사', 'monk'),
+          createHero('마법사', 'mage')
+        ];
+      }
+      mode = 'dungeon';
+      generateDungeon();
+      setLog(`${floor}층 던전에 입장했다.`);
+      renderAll();
+    }
+
+    // ===== 렌더링 =====
+    function renderParty() {
+      const partyEl = document.getElementById('party');
+      let html = `파티 (골드: ${gold}, 층: ${floor})\n`;
+      if (!party.length) {
+        html += '\n동료가 없습니다. 마을에서 동료 모집 버튼을 눌러보세요.';
+        partyEl.textContent = html;
+        return;
+      }
+      for (let i=0;i<party.length;i++) {
+        const h = party[i];
+        const stats = calcHeroStats(h);
+        const selClass = i===selectedHeroIndex ? 'party-member selected' : 'party-member';
+        html += `<div class="${selClass}" onclick="selectHero(${i})">`
+              + `${heroEmoji(h)} ${h.name} (${classLabel(h.cls)}) HP ${h.hp}/${stats.maxHp} ATK ${stats.atk} DEF ${stats.def}`;
+        if (h.buffTurns>0) html += ` [버프 ${h.buffTurns}턴]`;
+        if (h.status.poison>0) html += ` [독 ${h.status.poison}턴]`;
+        html += `</div>`;
+      }
+      partyEl.innerHTML = html;
+    }
+
+    function selectHero(i) {
+      selectedHeroIndex = i;
+      setLog(`${party[i].name}을(를) 선택했다.`);
+      renderAll();
+    }
+
+    function renderEquipment() {
+      const eqEl = document.getElementById('equipment');
+      if (!party.length) {
+        eqEl.textContent = '장비 (파티 없음)';
+        return;
+      }
+      const h = party[selectedHeroIndex];
+      const eq = h.equipment;
+      let html = `장비 - ${h.name}\n`;
+      function line(slotKey, label) {
+        const item = eq[slotKey];
+        const icon = item ? slotShortIcon(item.slotType) : '▫️';
+        const rarityCls = item && item.rarity ? rarityClass(item.rarity) : '';
+        const name = item ? item.name : '없음';
+        html += `<div class="slot-line" onclick="unequipSlot('${slotKey}')">`
+             + `<span class="slot-name">${label}</span>`
+             + `<span class="${rarityCls}">${icon} ${name}</span></div>`;
+      }
+      line('head','머리');
+      line('chest','몸통');
+      line('arms','팔');
+      line('legs','다리');
+      line('boots','신발');
+      line('ring1','반지1');
+      line('ring2','반지2');
+      line('necklace','목걸이');
+      line('mainHand','무기');
+      line('offHand','보조');
+      eqEl.innerHTML = html + '<div style="font-size:11px;color:#6b7280;margin-top:2px;">(슬롯을 클릭하면 장비 해제, 장비/소모품 사용은 인벤토리 클릭)</div>';
+    }
+
+    function renderInventory() {
+      const invEl = document.getElementById('inventory');
+      let html = '인벤토리\n';
+      if (!inventory.length) {
+        html += '\n(비어 있음)';
+        invEl.textContent = html;
+        return;
+      }
+      const gears = inventory.filter(it => it.category==='gear');
+      const consumables = inventory.filter(it => it.category!=='gear');
+
+      html += '[장비]\n';
+      if (!gears.length) html += '  (장비 없음)\n';
+      else {
+        inventory.forEach((it, idx) => {
+          if (it.category!=='gear') return;
+          const rc = it.rarity ? rarityClass(it.rarity) : '';
+          html += `<div class="item-row"><button class="item-btn ${rc}" onclick="equipOrUseItem(${idx})">${slotShortIcon(it.slotType)} ${it.name} (${rarityLabel(it.rarity)}) - ${itemSummary(it)}</button><button class="sell-btn" onclick="sellItem(${idx})">판매</button></div>`;
+        });
+      }
+
+      html += '\n[소모품]\n';
+      if (!consumables.length) html += '  (소모품 없음)\n';
+      else {
+        inventory.forEach((it, idx) => {
+          if (it.category==='gear') return;
+          html += `<div class="item-row"><button class="item-btn item-consumable" onclick="equipOrUseItem(${idx})">${slotShortIcon(it.slotType)} ${it.name} - ${itemSummary(it)}</button><button class="sell-btn" onclick="sellItem(${idx})">판매</button></div>`;
+        });
+      }
+
+      invEl.innerHTML = html;
+    }
+
+    function renderShop() {
+      const shopEl = document.getElementById('shop');
+      let html = '마을 상점\n';
+      if (!shopItems.length) html += '\n상점이 비어 있습니다. (아래 버튼으로 새로고침)';
+      else {
+        shopItems.forEach((it,idx) => {
+          const rc = it.rarity ? rarityClass(it.rarity) : (it.category!=='gear' ? 'item-consumable' : '');
+          html += `<div class="item-row"><button class="item-btn ${rc}" onclick="buyFromShop(${idx})">${slotShortIcon(it.slotType)} ${it.name} (${it.price}G) - ${itemSummary(it)}</button></div>`;
+        });
+      }
+      html += `<button class="shop-btn" onclick="refreshShop();renderAll();">상점 새로고침</button>`;
+      shopEl.innerHTML = html;
+    }
+
+    function renderQuests() {
+      const qEl = document.getElementById('quests');
+      if (!quests.length) {
+        qEl.textContent = '의뢰 게시판\n\n(현재 등록된 의뢰가 없습니다.)';
+        return;
+      }
+      let html = '의뢰 게시판\n';
+      for (const q of quests) {
+        html += `<div class="quest-card"><div class="quest-title">${q.done ? '✅ ' : '⬜ '}${q.title}</div><div class="quest-meta">${q.desc}</div>`;
+        if (q.type === 'killBoss') {
+          html += `<div class="quest-meta">진행: ${q.progress||0}/${q.target}</div>`;
+        }
+        html += `<div class="quest-meta">보상: ${q.reward} 골드</div></div>`;
+      }
+      qEl.innerHTML = html;
+    }
+
+    function renderRelics() {
+      const rEl = document.getElementById('relics');
+      let html = '유물\n';
+      if (!relics.length) {
+        html += '\n(획득한 유물이 없습니다.)';
+        rEl.textContent = html;
+        return;
+      }
+      for (const r of relics) {
+        html += `- ${r.name}: ${r.desc}\n`;
+      }
+      rEl.textContent = html;
+    }
+
+    function renderHelp() {
+      const helpEl = document.getElementById('help');
+      helpEl.innerHTML =
+`<details open>
+  <summary>조작법 보기</summary>
+  <div>
+- 이동: 방향키 / WASD
+- 대기: Space
+- 인벤토리: 아이템 클릭 시 장비/사용
+- 장비 해제: 장비 칸 클릭
+- 던전: 5층마다 보스, 100층 최종 보스 (마왕)
+- 보스 처치 후 계단에서 탈출 여부 선택 가능
+- 던전에서 전멸해도 일부 아이템과 골드는 남습니다.
+  </div>
+</details>`;
+    }
+
+    function renderAll() {
+      document.getElementById('mode').textContent =
+        (mode === 'town' ? '모드: 마을' : `모드: 던전 ${floor}층`);
+
+      if (mode === 'town') drawTown();
+      else drawDungeon();
+
+      renderParty();
+      renderEquipment();
+      renderInventory();
+      renderShop();
+      renderQuests();
+      renderRelics();
+      renderHelp();
+    }
+
+    // ===== 키보드 입력 =====
+    window.addEventListener('keydown', (e) => {
+      if (mode !== 'dungeon') return;
+      let handled = true;
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') movePlayer(0,-1);
+      else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') movePlayer(0,1);
+      else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') movePlayer(-1,0);
+      else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') movePlayer(1,0);
+      else if (e.key === ' ') {
+        // 대기
+        setLog('잠시 주변을 살핀다. (1턴 경과)');
+        monstersAct();
+        recomputeFov();
+        renderAll();
+      } else handled = false;
+      if (handled) e.preventDefault();
+    });
+
+    // ===== 초기화 =====
+    function initGame() {
+      // 기본 파티 / 상점 / 의뢰
+      party = [
+        createHero('용사', 'warrior'),
+        createHero('수도사', 'monk'),
+        createHero('마법사', 'mage')
+      ];
+      partyPositions = party.map((_,idx)=>({x:0,y:0}));
+      refreshShop();
+      setupQuests();
+      mode = 'town';
+      drawTown();
+      setLog('마을에 도착했다. 동료를 정비하고 던전에 도전해 보자!');
+      renderAll();
+    }
+
+    initGame();
+  </script>
+</body>
+</html>
