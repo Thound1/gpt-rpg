@@ -265,7 +265,7 @@
 
     let mode = 'town';   // 'town' | 'dungeon'
     let floor = 1;
-    let gold = 200;      // 🔹 시작 골드 200으로 변경
+    let gold = 200;      // 시작 골드 200
     let gameCleared = false;
 
     let party = [];
@@ -1023,12 +1023,12 @@
       const screen = document.getElementById('screen');
       const imgHtml = `
 <div class="town-buttons">
-  <button onclick="hireAlly()">동료 모집</button>
+  <button onclick="hireAlly()">동료 모집 (50G)</button>
   <button onclick="restInTown()">휴식 (전원 회복)</button>
   <button onclick="enterDungeon()">던전 입장</button>
 </div>
 <div class="town-wrapper">
-  <img class="town-img" src="town.png" alt="마을 풍경" />
+  <img class="town-img" src="/mnt/data/e7399df4-040f-44b6-8f6f-fbc204fe16f1.png" alt="마을 풍경" />
 </div>
 마을 광장입니다. 여관에서 동료를 모집하고, 상점에서 장비와 소모품을 구입한 뒤
 깊은 던전에 도전해 보세요.\n\n골드: ${gold}  |  현재 층 기록: ${floor}층까지 탐험`;
@@ -1078,12 +1078,31 @@
     }
 
     function handleTileEvent(tile,x,y) {
-      if (tile === TILE_STAIRS && exitOpen) {
-        if (floor >= 100) {
-          setLog('계단을 통해 마을로 귀환했습니다.');
-          returnToTown(true);
+      if (tile === TILE_STAIRS) {
+        // 100층은 여기서 내려갈 수 없음 (마왕 처치 시 자동 엔딩)
+        if (floor === 100) {
+          setLog('강력한 마왕의 기운으로 계단이 봉인돼 있다.');
+          renderAll();
           return;
         }
+
+        // 일반 층 (5의 배수 아님): 바로 다음 층으로
+        if (floor % 5 !== 0) {
+          floor++;
+          setLog(`${floor}층으로 내려갑니다...`);
+          generateDungeon();
+          renderAll();
+          return;
+        }
+
+        // 보스층: 보스 처치 전이면 봉인
+        if (!exitOpen) {
+          setLog('계단이 봉인돼 있다. 보스를 먼저 쓰러뜨리자.');
+          renderAll();
+          return;
+        }
+
+        // 보스 처치 후: 내려갈지, 탈출할지 선택
         const goDown = confirm('보스를 쓰러뜨리고 계단이 열렸다.\n\n[확인] 더 깊은 층으로 내려간다.\n[취소] 여기서 탈출해 마을로 돌아간다.');
         if (goDown) {
           floor++;
@@ -1153,7 +1172,7 @@
           h.tempDef += 2;
           h.buffTurns = Math.max(h.buffTurns, 20);
         }
-        appendLog('제단에서 힘이 솟아나온다! 20턴 동안 ATK/DEF +2.');
+        appendLog('제단에서 힘이 솟아난다! 20턴 동안 ATK/DEF +2.');
       } else {
         for (const h of party) {
           if (h.hp<=0) continue;
@@ -1420,6 +1439,14 @@
         renderAll();
         return;
       }
+      const cost = 50;
+      if (gold < cost) {
+        setLog(`동료를 고용하려면 ${cost} 골드가 필요합니다.`);
+        renderAll();
+        return;
+      }
+      gold -= cost;
+
       const classes = ['warrior','archer','mage','monk','rogue','guardian','knight'];
       const cls = classes[randInt(0, classes.length-1)];
       const namePool = {
@@ -1435,7 +1462,7 @@
       const hero = createHero(nList[randInt(0,nList.length-1)], cls);
       party.push(hero);
       partyPositions.push({x:playerX, y:playerY});
-      setLog(`새로운 동료가 합류했다! (${hero.name}, ${classLabel(cls)})`);
+      setLog(`새로운 동료가 합류했다! (${hero.name}, ${classLabel(cls)}) (-${cost}G)`);
       renderAll();
     }
 
@@ -1505,7 +1532,6 @@
 
     function enterDungeon() {
       if (!party.length) {
-        // 🔹 파티가 없으면 용사 1명으로 시작
         party = [ createHero('용사', 'warrior') ];
       }
       mode = 'dungeon';
@@ -1661,8 +1687,8 @@
 - 대기: Space
 - 인벤토리: 아이템 클릭 시 장비/사용
 - 장비 해제: 장비 칸 클릭
-- 던전: 5층마다 보스, 100층 최종 보스 (마왕)
-- 보스 처치 후 계단에서 탈출 여부 선택 가능
+- 일반 층: 계단 밟으면 자동으로 다음 층 이동
+- 보스 층: 보스 처치 후 계단에서 내려가기/탈출 선택
 - 던전에서 전멸해도 일부 아이템과 골드는 남습니다.
   </div>
 </details>`;
@@ -1703,10 +1729,8 @@
 
     // ===== 초기화 =====
     function initGame() {
-      // 🔹 시작 파티: 용사 한 명만
-      party = [
-        createHero('용사', 'warrior')
-      ];
+      // 시작 파티: 용사 한 명
+      party = [ createHero('용사', 'warrior') ];
       partyPositions = party.map((_,idx)=>({x:0,y:0}));
       refreshShop();
       setupQuests();
