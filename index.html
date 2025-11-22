@@ -1484,30 +1484,40 @@ function drawTown() {
       renderAll();
     }
 
-    function refreshShop() {
-      shopItems = [];
-      for (let i=0;i<5;i++) {
-        const roll = Math.random();
-        if (roll < 0.4) shopItems.push(generateRandomItem(false));
-        else if (roll < 0.7) shopItems.push(createPotion());
-        else shopItems.push(createScroll());
-      }
-    }
+function refreshShop() {
+  // 던전에서는 상점 새로고침도 불가
+  if (mode !== 'town') return;
 
-    function buyFromShop(idx) {
-      const item = shopItems[idx];
-      if (!item) return;
-      if (gold < item.price) {
-        setLog('골드가 부족하다.');
-        renderAll();
-        return;
-      }
-      gold -= item.price;
-      inventory.push(item);
-      shopItems.splice(idx,1);
-      setLog(`${item.name}을(를) 구매했다. (-${item.price} 골드)`);
-      renderAll();
-    }
+  shopItems = [];
+  for (let i = 0; i < 5; i++) {
+    const roll = Math.random();
+    if (roll < 0.4) shopItems.push(generateRandomItem(false));
+    else if (roll < 0.7) shopItems.push(createPotion());
+    else shopItems.push(createScroll());
+  }
+}
+
+function buyFromShop(idx) {
+  // 던전에서는 상점 이용 불가
+  if (mode !== 'town') {
+    setLog('던전 내부에서는 상점을 이용할 수 없습니다. 마을로 돌아가세요.');
+    renderAll();
+    return;
+  }
+
+  const item = shopItems[idx];
+  if (!item) return;
+  if (gold < item.price) {
+    setLog('골드가 부족하다.');
+    renderAll();
+    return;
+  }
+  gold -= item.price;
+  inventory.push(item);
+  shopItems.splice(idx, 1);
+  setLog(`${item.name}을(를) 구매했다. (-${item.price} 골드)`);
+  renderAll();
+}
 
     function setupQuests() {
       quests = [
@@ -1650,19 +1660,35 @@ function drawTown() {
       invEl.innerHTML = html;
     }
 
-    function renderShop() {
-      const shopEl = document.getElementById('shop');
-      let html = '마을 상점\n';
-      if (!shopItems.length) html += '\n상점이 비어 있습니다. (아래 버튼으로 새로고침)';
-      else {
-        shopItems.forEach((it,idx) => {
-          const rc = it.rarity ? rarityClass(it.rarity) : (it.category!=='gear' ? 'item-consumable' : '');
-          html += `<div class="item-row"><button class="item-btn ${rc}" onclick="buyFromShop(${idx})">${slotShortIcon(it.slotType)} ${it.name} (${it.price}G) - ${itemSummary(it)}</button></div>`;
-        });
-      }
-      html += `<button class="shop-btn" onclick="refreshShop();renderAll();">상점 새로고침</button>`;
-      shopEl.innerHTML = html;
-    }
+function renderShop() {
+  const shopEl = document.getElementById('shop');
+
+  // 던전 모드에서는 읽기용 설명만
+  if (mode !== 'town') {
+    shopEl.textContent =
+      '마을 상점\n\n' +
+      '(던전 내부에서는 상점을 이용할 수 없습니다.\n' +
+      ' 마을에서만 구매 및 새로고침이 가능합니다.)';
+    return;
+  }
+
+  let html = '마을 상점\n';
+  if (!shopItems.length) {
+    html += '\n상점이 비어 있습니다. (아래 버튼으로 새로고침)';
+  } else {
+    shopItems.forEach((it, idx) => {
+      const rc = it.rarity ? rarityClass(it.rarity)
+                           : (it.category !== 'gear' ? 'item-consumable' : '');
+      html += `<div class="item-row">
+        <button class="item-btn ${rc}" onclick="buyFromShop(${idx})">
+          ${slotShortIcon(it.slotType)} ${it.name} (${it.price}G) - ${itemSummary(it)}
+        </button>
+      </div>`;
+    });
+  }
+  html += `<button class="shop-btn" onclick="refreshShop();renderAll();">상점 새로고침</button>`;
+  shopEl.innerHTML = html;
+}
 
     function renderQuests() {
       const qEl = document.getElementById('quests');
@@ -1762,5 +1788,6 @@ function drawTown() {
   </script>
 </body>
 </html>
+
 
 
