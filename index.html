@@ -68,7 +68,7 @@
       width: 100%;
       height: 100%;
       display: block;
-      object-fit: cover;      /* 위/아래 흰 테두리 제거용 */
+      object-fit: cover;
       object-position: center;
     }
     #screen .town-buttons {
@@ -265,7 +265,7 @@
 
     let mode = 'town';   // 'town' | 'dungeon'
     let floor = 1;
-    let gold = 100;
+    let gold = 200;      // 🔹 시작 골드 200으로 변경
     let gameCleared = false;
 
     let party = [];
@@ -460,57 +460,10 @@
         case 'necklace': return '📿 목걸이';
         case 'mainHand': return '⚔️ 무기';
         case 'offHand':  return '🛡️ 보조손';
+        case 'potion':   return '🧪 물약';
+        case 'scroll':   return '📜 스크롤';
         default:         return slotType;
       }
-    }
-
-    function rollRarity(isBoss) {
-      let r = Math.random();
-      if (hasRelic('lucky')) r = Math.max(0, r - 0.08);
-
-      if (!isBoss) {
-        if (r < 0.60) return 'normal';
-        if (r < 0.85) return 'magic';
-        if (r < 0.97) return 'rare';
-        return 'unique';
-      } else {
-        if (r < 0.20) return 'normal';
-        if (r < 0.50) return 'magic';
-        if (r < 0.75) return 'rare';
-        if (r < 0.90) return 'unique';
-        if (r < 0.97) return 'legend';
-        return 'epic';
-      }
-    }
-
-    function createBaseItemForSlot(slot) {
-      switch (slot) {
-        case 'head':     return { name: '가죽 투구',   attack: 0, defense: 2, hp: 5 };
-        case 'chest':    return { name: '가죽 갑옷',   attack: 0, defense: 4, hp:10 };
-        case 'arms':     return { name: '가죽 장갑',   attack: 1, defense: 1, hp: 3 };
-        case 'legs':     return { name: '가죽 바지',   attack: 0, defense: 3, hp: 6 };
-        case 'boots':    return { name: '가죽 부츠',   attack: 0, defense: 2, hp: 4 };
-        case 'ring':     return { name: '구리 반지',   attack: 1, defense: 0, hp: 2 };
-        case 'necklace': return { name: '낡은 목걸이', attack: 0, defense: 0, hp: 8 };
-        case 'mainHand': return { name: '쇠검',       attack: 6, defense: 0, hp: 0 };
-        case 'offHand':  return { name: '나무 방패',   attack: 0, defense: 3, hp: 0 };
-      }
-      return { name: '이상한 물건', attack: 1, defense: 1, hp: 1 };
-    }
-
-    function makeItemName(baseName, rarity) {
-      const prefix = {
-        magic:  ['빛나는', '날카로운', '튼튼한', '신비한'],
-        rare:   ['정예의', '고급', '강화된', '숙련자의'],
-        unique: ['기묘한', '고대의', '저주받은', '특이한'],
-        legend: ['전설의', '영웅의', '왕가의', '신성한'],
-        epic:   ['에픽', '차원의', '운명의', '궁극의']
-      };
-      if (rarity === 'normal') return baseName;
-      const list = prefix[rarity] || [];
-      if (!list.length) return baseName;
-      const p = list[randInt(0, list.length - 1)];
-      return p + ' ' + baseName;
     }
 
     function createPotion() {
@@ -547,6 +500,55 @@
           description: '몬스터를 잠시 멍하게 만들어 공격을 약화합니다.',
           price: 35
         };
+      }
+    }
+
+    function createBaseItemForSlot(slot) {
+      switch (slot) {
+        case 'head':     return { name: '가죽 투구',   attack: 0, defense: 2, hp: 5 };
+        case 'chest':    return { name: '가죽 갑옷',   attack: 0, defense: 4, hp:10 };
+        case 'arms':     return { name: '가죽 장갑',   attack: 1, defense: 1, hp: 3 };
+        case 'legs':     return { name: '가죽 바지',   attack: 0, defense: 3, hp: 6 };
+        case 'boots':    return { name: '가죽 부츠',   attack: 0, defense: 2, hp: 4 };
+        case 'ring':     return { name: '구리 반지',   attack: 1, defense: 0, hp: 2 };
+        case 'necklace': return { name: '낡은 목걸이', attack: 0, defense: 0, hp: 8 };
+        case 'mainHand': return { name: '쇠검',       attack: 6, defense: 0, hp: 0 };
+        case 'offHand':  return { name: '나무 방패',   attack: 0, defense: 3, hp: 0 };
+      }
+      return { name: '이상한 물건', attack: 1, defense: 1, hp: 1 };
+    }
+
+    function makeItemName(baseName, rarity) {
+      const prefix = {
+        magic:  ['빛나는', '날카로운', '튼튼한', '신비한'],
+        rare:   ['정예의', '고급', '강화된', '숙련자의'],
+        unique: ['기묘한', '고대의', '저주받은', '특이한'],
+        legend: ['전설의', '영웅의', '왕가의', '신성한'],
+        epic:   ['에픽', '차원의', '운명의', '궁극의']
+      };
+      if (rarity === 'normal') return baseName;
+      const list = prefix[rarity] || [];
+      if (!list.length) return baseName;
+      const p = list[randInt(0, list.length - 1)];
+      return p + ' ' + baseName;
+    }
+
+    function rollRarity(isBoss) {
+      let r = Math.random();
+      if (hasRelic('lucky')) r = Math.max(0, r - 0.08);
+
+      if (!isBoss) {
+        if (r < 0.60) return 'normal';
+        if (r < 0.85) return 'magic';
+        if (r < 0.97) return 'rare';
+        return 'unique';
+      } else {
+        if (r < 0.20) return 'normal';
+        if (r < 0.50) return 'magic';
+        if (r < 0.75) return 'rare';
+        if (r < 0.90) return 'unique';
+        if (r < 0.97) return 'legend';
+        return 'epic';
       }
     }
 
@@ -1004,7 +1006,6 @@
               else if (tile === TILE_MERCH) ch = '🧙‍♂️';
               else ch = '⬜';
             } else if (exp) {
-              // 탐색했지만 현재는 안 보이는 곳
               if (tile === TILE_WALL) ch = '▪️';
               else ch = '▫️';
             } else {
@@ -1027,7 +1028,6 @@
   <button onclick="enterDungeon()">던전 입장</button>
 </div>
 <div class="town-wrapper">
-  <!-- 여기에 본인이 가진 마을 이미지를 town.png로 두면 됨 -->
   <img class="town-img" src="town.png" alt="마을 풍경" />
 </div>
 마을 광장입니다. 여관에서 동료를 모집하고, 상점에서 장비와 소모품을 구입한 뒤
@@ -1080,7 +1080,6 @@
     function handleTileEvent(tile,x,y) {
       if (tile === TILE_STAIRS && exitOpen) {
         if (floor >= 100) {
-          // 이미 마왕을 잡은 뒤라면 그냥 탈출
           setLog('계단을 통해 마을로 귀환했습니다.');
           returnToTown(true);
           return;
@@ -1141,7 +1140,6 @@
       dungeonMap[y][x] = TILE_FLOOR;
       const roll = Math.random();
       if (roll < 0.4) {
-        // 회복
         for (const h of party) {
           if (h.hp<=0) continue;
           const stats = calcHeroStats(h);
@@ -1149,7 +1147,6 @@
         }
         appendLog('축복의 제단이다! 파티 전원이 완전히 회복됐다.');
       } else if (roll < 0.8) {
-        // 버프
         for (const h of party) {
           if (h.hp<=0) continue;
           h.tempAtk += 2;
@@ -1158,7 +1155,6 @@
         }
         appendLog('제단에서 힘이 솟아나온다! 20턴 동안 ATK/DEF +2.');
       } else {
-        // 저주
         for (const h of party) {
           if (h.hp<=0) continue;
           h.status.poison += 10;
@@ -1200,10 +1196,10 @@
         let atk = stats.atk + randInt(-1,2);
         if (atk<1) atk=1;
         if (h.cls==='archer' && Math.abs(monster.x-playerX)+Math.abs(monster.y-playerY)>1) {
-          atk += 2; // 궁수 원거리 보너스
+          atk += 2;
         }
         if (h.cls==='rogue' && Math.random()<0.15) {
-          atk *= 2; // 도적 치명타
+          atk *= 2;
           appendLog(`${h.name}의 기습 공격! (치명타)`);
         }
         const dmg = Math.max(1, atk - monster.def);
@@ -1241,7 +1237,6 @@
         }
       }
 
-      // 턴 경과
       monstersAct();
       recomputeFov();
       renderAll();
@@ -1267,7 +1262,6 @@
     }
 
     function onMonsterKilled(index, monster) {
-      // 골드 & 드랍
       const goldGain = randInt(5, 20) + Math.floor(floor/2);
       gold += goldGain;
       appendLog(`${monsterLabel(monster)}에게서 ${goldGain} 골드를 얻었다.`);
@@ -1277,8 +1271,8 @@
         appendLog(`[드랍] ${item.name} 획득.`);
       }
       applyRelicOnKill();
+      updateQuestsOnKill(monster);
 
-      // 보스 처리
       if (monster.isBoss) {
         bossAlive = false;
         if (floor === 100) {
@@ -1302,7 +1296,6 @@
 
     function handlePartyWipe() {
       setLog('파티가 전멸했다... 간신히 목숨만 건져 마을로 도망쳤다.');
-      // 일부 아이템 손실
       if (inventory.length>0) {
         const toLose = Math.floor(inventory.length/2);
         for (let i=0;i<toLose;i++) {
@@ -1311,14 +1304,12 @@
         }
         appendLog(`충격으로 장비 일부를 잃어버렸다... (인벤토리 약 절반 손실)`);
       }
-      // 골드 일부 손실
       if (gold>0) {
         const lost = Math.floor(gold*0.3);
         gold -= lost;
         appendLog(`소지금도 흩어졌다... 골드 ${lost} 손실.`);
       }
 
-      // 전원 1 HP로 부활
       for (const h of party) {
         const stats = calcHeroStats(h);
         h.hp = Math.max(1, Math.floor(stats.maxHp*0.3));
@@ -1331,7 +1322,6 @@
     }
 
     function monstersAct() {
-      // 버프/중독 턴 처리
       for (const h of party) {
         if (h.buffTurns>0) {
           h.buffTurns--;
@@ -1364,7 +1354,6 @@
         const dist = Math.abs(dx)+Math.abs(dy);
 
         if (dist === 1) {
-          // 인접 공격
           const targets = party.filter(h => h.hp>0);
           if (!targets.length) return;
           let target;
@@ -1385,7 +1374,6 @@
             }
           }
         } else if (dist <= 6) {
-          // 추적 이동
           const stepX = dx>0 ? 1 : (dx<0 ? -1 : 0);
           const stepY = dy>0 ? 1 : (dy<0 ? -1 : 0);
           const tryMoves = [];
@@ -1399,7 +1387,6 @@
             break;
           }
         } else {
-          // 랜덤 이동
           if (Math.random()<0.4) {
             const dir = [[1,0],[-1,0],[0,1],[0,-1]][randInt(0,3)];
             const tx = m.x + dir[0], ty = m.y + dir[1];
@@ -1518,12 +1505,8 @@
 
     function enterDungeon() {
       if (!party.length) {
-        // 파티 없으면 기본 파티 생성
-        party = [
-          createHero('용사', 'warrior'),
-          createHero('수도사', 'monk'),
-          createHero('마법사', 'mage')
-        ];
+        // 🔹 파티가 없으면 용사 1명으로 시작
+        party = [ createHero('용사', 'warrior') ];
       }
       mode = 'dungeon';
       generateDungeon();
@@ -1710,7 +1693,6 @@
       else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') movePlayer(-1,0);
       else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') movePlayer(1,0);
       else if (e.key === ' ') {
-        // 대기
         setLog('잠시 주변을 살핀다. (1턴 경과)');
         monstersAct();
         recomputeFov();
@@ -1721,18 +1703,16 @@
 
     // ===== 초기화 =====
     function initGame() {
-      // 기본 파티 / 상점 / 의뢰
+      // 🔹 시작 파티: 용사 한 명만
       party = [
-        createHero('용사', 'warrior'),
-        createHero('수도사', 'monk'),
-        createHero('마법사', 'mage')
+        createHero('용사', 'warrior')
       ];
       partyPositions = party.map((_,idx)=>({x:0,y:0}));
       refreshShop();
       setupQuests();
       mode = 'town';
       drawTown();
-      setLog('마을에 도착했다. 동료를 정비하고 던전에 도전해 보자!');
+      setLog('마을에 도착했다. 동료를 모집하고 장비를 갖춘 뒤 던전에 도전해 보자!');
       renderAll();
     }
 
