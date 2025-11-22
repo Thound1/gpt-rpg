@@ -1019,22 +1019,23 @@
       screen.innerHTML = html;
     }
 
-    function drawTown() {
-      const screen = document.getElementById('screen');
-      const imgHtml = `
+function drawTown() {
+  const screen = document.getElementById('screen');
+  const imgHtml = `
 <div class="town-buttons">
   <button onclick="hireAlly()">동료 모집 (50G)</button>
   <button onclick="restInTown()">휴식 (전원 회복)</button>
   <button onclick="enterDungeon()">던전 입장</button>
 </div>
 <div class="town-wrapper">
-  <img class="town-img" src="/mnt/data/e7399df4-040f-44b6-8f6f-fbc204fe16f1.png" alt="마을 풍경" />
+  <!-- 여기 src 경로만 수정 -->
+  <img class="town-img" src="town.png" alt="마을 풍경" />
 </div>
 마을 광장입니다. 여관에서 동료를 모집하고, 상점에서 장비와 소모품을 구입한 뒤
 깊은 던전에 도전해 보세요.\n\n골드: ${gold}  |  현재 층 기록: ${floor}층까지 탐험`;
-      screen.textContent = '';
-      screen.innerHTML = imgHtml;
-    }
+  screen.textContent = '';
+  screen.innerHTML = imgHtml;
+}
 
     // ===== 전투 및 이동 =====
     function movePlayer(dx,dy) {
@@ -1761,3 +1762,4 @@
   </script>
 </body>
 </html>
+
