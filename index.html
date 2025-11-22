@@ -1039,6 +1039,7 @@
     // ===== 전투 및 이동 =====
     function movePlayer(dx,dy) {
       if (mode!=='dungeon') return;
+
       const nx = playerX + dx;
       const ny = playerY + dy;
       if (nx<0||nx>=MAP_W||ny<0||ny>=MAP_H) return;
@@ -1059,43 +1060,41 @@
         return;
       }
 
-      // 이동
-      playerX = nx; playerY = ny;
+      // 실제 이동
+      playerX = nx;
+      playerY = ny;
+
       // 파티 꼬리 이동
       for (let i=partyPositions.length-1; i>0; i--) {
         partyPositions[i].x = partyPositions[i-1].x;
         partyPositions[i].y = partyPositions[i-1].y;
       }
-      partyPositions[0].x = playerX;
-      partyPositions[0].y = playerY;
+      if (partyPositions.length) {
+        partyPositions[0].x = playerX;
+        partyPositions[0].y = playerY;
+      }
 
-      handleTileEvent(tile, nx, ny);
-
-      turnCount++;
-      recomputeFov();
-      monstersAct();
-      renderAll();
-    }
-
-    function handleTileEvent(tile,x,y) {
-      if (tile === TILE_STAIRS) {
-        // 100층은 여기서 내려갈 수 없음 (마왕 처치 시 자동 엔딩)
+      // ── 계단 처리 ──
+      const newTile = dungeonMap[playerY][playerX];
+      if (newTile === TILE_STAIRS) {
+        // 100층: 마왕 층, 계단으로 더 내려갈 수 없음
         if (floor === 100) {
           setLog('강력한 마왕의 기운으로 계단이 봉인돼 있다.');
           renderAll();
           return;
         }
 
-        // 일반 층 (5의 배수 아님): 바로 다음 층으로
+        // 일반 층 (5의 배수 아님): 바로 다음 층
         if (floor % 5 !== 0) {
           floor++;
           setLog(`${floor}층으로 내려갑니다...`);
           generateDungeon();
+          recomputeFov();
           renderAll();
-          return;
+          return; // 몬스터 턴 없음
         }
 
-        // 보스층: 보스 처치 전이면 봉인
+        // 보스층: 보스 살아있으면 봉인
         if (!exitOpen) {
           setLog('계단이 봉인돼 있다. 보스를 먼저 쓰러뜨리자.');
           renderAll();
@@ -1103,18 +1102,36 @@
         }
 
         // 보스 처치 후: 내려갈지, 탈출할지 선택
-        const goDown = confirm('보스를 쓰러뜨리고 계단이 열렸다.\n\n[확인] 더 깊은 층으로 내려간다.\n[취소] 여기서 탈출해 마을로 돌아간다.');
+        const goDown = confirm(
+          '보스를 쓰러뜨리고 계단이 열렸다.\n\n' +
+          '[확인] 더 깊은 층으로 내려간다.\n' +
+          '[취소] 여기서 탈출해 마을로 돌아간다.'
+        );
+
         if (goDown) {
           floor++;
           setLog(`${floor}층으로 내려갑니다...`);
           generateDungeon();
+          recomputeFov();
+          renderAll();
         } else {
           returnToTown(true);
+          renderAll();
         }
-        renderAll();
         return;
       }
 
+      // ── 계단 이외의 타일 이벤트 ──
+      handleTileEvent(newTile, playerX, playerY);
+
+      // 턴 경과 및 몬스터 행동
+      turnCount++;
+      recomputeFov();
+      monstersAct();
+      renderAll();
+    }
+
+    function handleTileEvent(tile,x,y) {
       if (tile === TILE_CHEST) {
         dungeonMap[y][x] = TILE_FLOOR;
         const goldGain = randInt(20,60);
